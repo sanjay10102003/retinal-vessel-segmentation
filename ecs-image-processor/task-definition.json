@@ -1,0 +1,78 @@
+{
+  "family": "image-processor-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::485039560092:role/LabRole",
+  "taskRoleArn": "arn:aws:iam::485039560092:role/LabRole",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "485039560092.dkr.ecr.us-east-1.amazonaws.com/data-608-project/model",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -qO- http://localhost:8000/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/image-processor",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "api"
+        }
+      }
+    },
+    {
+      "name": "worker",
+      "image": "485039560092.dkr.ecr.us-east-1.amazonaws.com/data-608-project/worker",
+      "essential": true,
+      "dependsOn": [
+        {
+          "containerName": "api",
+          "condition": "HEALTHY"
+        }
+      ],
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "SQS_QUEUE_URL",
+          "value": "https://sqs.us-east-1.amazonaws.com/485039560092/data-608-queue"
+        },
+        {
+          "name": "DYNAMO_TABLE_NAME",
+          "value": "jobs"
+        },
+        {
+          "name": "OUTPUT_BUCKET",
+          "value": "data-608-project-bucket"
+        },
+        {
+          "name": "LOCAL_API_URL",
+          "value": "http://127.0.0.1:8000/predict"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/image-processor",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "worker"
+        }
+      }
+    }
+  ]
+}

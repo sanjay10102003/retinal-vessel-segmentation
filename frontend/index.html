@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Async Image Processor</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, Arial, sans-serif;
+        background: linear-gradient(
+          135deg,
+          #eef2ff 0%,
+          #f8fbff 50%,
+          #eef2ff 100%
+        );
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 420px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08);
+        padding: 24px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        background: #e8f0ff;
+        color: #2563eb;
+        margin-bottom: 12px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .subtitle {
+        margin: 10px 0 0;
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .upload-box {
+        border: 2px dashed #93c5fd;
+        border-radius: 16px;
+        padding: 18px;
+        background: #f8fbff;
+        transition: 0.2s ease;
+      }
+
+      .upload-box.disabled {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      .file-input-wrap {
+        background: white;
+        border: 1px solid #c7d2fe;
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        font-size: 14px;
+        color: #334155;
+      }
+
+      .hint {
+        text-align: center;
+        margin-top: 10px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      button {
+        border: none;
+        border-radius: 14px;
+        padding: 14px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s ease;
+      }
+
+      #uploadBtn {
+        flex: 1;
+        color: white;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.16);
+      }
+
+      #uploadBtn:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      #uploadBtn:disabled {
+        cursor: not-allowed;
+        background: #94a3b8;
+        box-shadow: none;
+      }
+
+      #resetBtn {
+        flex: 1;
+        background: #f3f4f6;
+        color: #111827;
+        border: 1px solid #d1d5db;
+      }
+
+      #resetBtn:hover {
+        background: #e5e7eb;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .status-card {
+        display: none;
+        margin-top: 18px;
+        border-radius: 16px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        padding: 18px;
+        min-height: 140px;
+      }
+
+      .status-center {
+        text-align: center;
+      }
+
+      .status-pill {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+      }
+
+      .status-processing {
+        background: #eff6ff;
+        color: #2563eb;
+      }
+
+      .status-success {
+        background: #ecfdf5;
+        color: #16a34a;
+      }
+
+      .status-failed {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+
+      .loader-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 14px;
+      }
+
+      .loader {
+        width: 30px;
+        height: 30px;
+        border: 4px solid #dbeafe;
+        border-top: 4px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+
+      .message {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 14px;
+        line-height: 1.5;
+        min-height: 20px;
+      }
+
+      .info {
+        color: #2563eb;
+      }
+
+      .success {
+        color: #16a34a;
+      }
+
+      .error {
+        color: #dc2626;
+      }
+
+      .preview {
+        margin-top: 18px;
+      }
+
+      .preview-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 10px;
+      }
+
+      .preview img {
+        width: 100%;
+        max-height: 240px;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        background: white;
+        display: block;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Upload Image</h1>
+        <p class="subtitle">
+          Upload an image, track its processing status, and view the final
+          output once it is ready.
+        </p>
+      </div>
+
+      <form id="uploadForm">
+        <div class="upload-box" id="uploadBox">
+          <div class="file-input-wrap">
+            <input
+              type="file"
+              id="imageInput"
+              name="image"
+              accept="image/*"
+              required
+            />
+          </div>
+          <div class="hint">
+            Accepted: image files only · Maximum size: 10 MB
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="uploadBtn">Upload Image</button>
+          <button type="button" id="resetBtn" class="hidden">Reset</button>
+        </div>
+      </form>
+
+      <div class="status-card" id="statusCard">
+        <div class="status-center">
+          <span id="statusBadge" class="status-pill hidden"></span>
+        </div>
+
+        <div id="loaderWrap" class="loader-wrap hidden">
+          <div class="loader"></div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div id="preview" class="preview"></div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("uploadForm");
+      const imageInput = document.getElementById("imageInput");
+      const message = document.getElementById("message");
+      const preview = document.getElementById("preview");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const loaderWrap = document.getElementById("loaderWrap");
+      const statusBadge = document.getElementById("statusBadge");
+      const uploadBox = document.getElementById("uploadBox");
+      const statusCard = document.getElementById("statusCard");
+
+      const MAX_SIZE = 10 * 1024 * 1024;
+      const LOCAL_STORAGE_KEY = "job_id";
+
+      let pollingInterval = null;
+      let isProcessing = false;
+      let isCheckingStatus = false;
+      let currentJobId = null;
+      let latestStatusRequestId = 0;
+
+      function showStatusCard() {
+        statusCard.style.display = "block";
+      }
+
+      function hideStatusCard() {
+        statusCard.style.display = "none";
+      }
+
+      function updateStatusCardVisibility() {
+        const hasVisibleStatus = !statusBadge.classList.contains("hidden");
+        const hasVisibleLoader = !loaderWrap.classList.contains("hidden");
+        const hasMessage = message.textContent.trim() !== "";
+        const hasPreview = preview.innerHTML.trim() !== "";
+
+        if (hasVisibleStatus || hasVisibleLoader || hasMessage || hasPreview) {
+          showStatusCard();
+        } else {
+          hideStatusCard();
+        }
+      }
+
+      function showMessage(text, type = "") {
+        message.textContent = text;
+        message.className = `message ${type}`.trim();
+        updateStatusCardVisibility();
+      }
+
+      function showLoader() {
+        loaderWrap.classList.remove("hidden");
+        updateStatusCardVisibility();
+      }
+
+      function hideLoader() {
+        loaderWrap.classList.add("hidden");
+        updateStatusCardVisibility();
+      }
+
+      function showStatus(text, type) {
+        statusBadge.textContent = text;
+        statusBadge.className = `status-pill ${type}`;
+        statusBadge.classList.remove("hidden");
+        updateStatusCardVisibility();
+      }
+
+      function hideStatus() {
+        statusBadge.className = "status-pill hidden";
+        statusBadge.textContent = "";
+        updateStatusCardVisibility();
+      }
+
+      function setProcessingState(processing) {
+        isProcessing = processing;
+        uploadBtn.disabled = processing;
+        imageInput.disabled = processing;
+        uploadBox.classList.toggle("disabled", processing);
+
+        if (processing) {
+          uploadBtn.textContent = "Processing...";
+          resetBtn.classList.add("hidden");
+        } else {
+          uploadBtn.textContent = "Upload Image";
+        }
+      }
+
+      function showResetButton() {
+        resetBtn.classList.remove("hidden");
+      }
+
+      function hideResetButton() {
+        resetBtn.classList.add("hidden");
+      }
+
+      function renderPreview(src, label = "Preview") {
+        preview.innerHTML = `
+          <div class="preview-label">${label}</div>
+          <img src="${src}" alt="${label}" />
+        `;
+        updateStatusCardVisibility();
+      }
+
+      function clearPreview() {
+        preview.innerHTML = "";
+        updateStatusCardVisibility();
+      }
+
+      function clearUI() {
+        form.reset();
+        clearPreview();
+        hideLoader();
+        hideStatus();
+        hideResetButton();
+        setProcessingState(false);
+        message.textContent = "";
+        message.className = "message";
+        updateStatusCardVisibility();
+      }
+
+      function startPolling(jobId) {
+        stopPolling();
+        currentJobId = jobId;
+
+        pollingInterval = setInterval(() => {
+          checkJobStatus(jobId);
+        }, 2000);
+      }
+
+      function stopPolling() {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+      }
+
+      function resetAll() {
+        stopPolling();
+        currentJobId = null;
+        isCheckingStatus = false;
+        latestStatusRequestId = 0;
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        clearUI();
+      }
+
+      async function checkJobStatus(jobId) {
+        if (!jobId) return;
+        if (isCheckingStatus) return;
+        if (currentJobId !== jobId) return;
+
+        isCheckingStatus = true;
+        const requestId = ++latestStatusRequestId;
+
+        try {
+          const response = await fetch(
+            `http://52.203.91.46:8000/api/image/status/${jobId}`,
+          );
+
+          const data = await response.json().catch(() => null);
+
+          if (requestId !== latestStatusRequestId) return;
+          if (currentJobId !== jobId) return;
+
+          if (response.status === 404) {
+            stopPolling();
+            currentJobId = null;
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            hideLoader();
+            showStatus("NOT FOUND", "status-failed");
+            showMessage("Job not found. Please upload again.", "error");
+            setProcessingState(false);
+            showResetButton();
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error(data?.message || "Failed to fetch job status.");
+          }
+
+          const status = data?.status;
+
+          if (
+            status === "QUEUED" ||
+            status === "UPLOADED" ||
+            status === "PROCESSING"
+          ) {
+            setProcessingState(true);
+            showLoader();
+            showStatus(status, "status-processing");
+            showMessage(
+              "Your image is being processed. Please wait...",
+              "info",
+            );
+            return;
+          }
+
+          if (status === "COMPLETED") {
+            stopPolling();
+            currentJobId = null;
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            hideLoader();
+            setProcessingState(false);
+            showStatus("COMPLETED", "status-success");
+            showMessage("Image processing completed successfully.", "success");
+            showResetButton();
+
+            if (data?.image_url) {
+              renderPreview(data.image_url, "Processed Image");
+            } else {
+              clearPreview();
+            }
+            return;
+          }
+
+          if (status === "FAILED") {
+            stopPolling();
+            currentJobId = null;
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            hideLoader();
+            setProcessingState(false);
+            showStatus("FAILED", "status-failed");
+            showMessage("Image processing failed. Please try again.", "error");
+            showResetButton();
+            return;
+          }
+
+          stopPolling();
+          currentJobId = null;
+          hideLoader();
+          setProcessingState(false);
+          showStatus(status || "UNKNOWN", "status-failed");
+          showMessage(`Current status: ${status || "unknown"}`, "error");
+          showResetButton();
+        } catch (error) {
+          if (requestId !== latestStatusRequestId) return;
+
+          stopPolling();
+          currentJobId = null;
+          hideLoader();
+          setProcessingState(false);
+          showStatus("ERROR", "status-failed");
+          showMessage(
+            error.message || "Something went wrong while checking status.",
+            "error",
+          );
+          showResetButton();
+        } finally {
+          if (requestId === latestStatusRequestId) {
+            isCheckingStatus = false;
+          }
+        }
+      }
+
+      imageInput.addEventListener("change", () => {
+        if (isProcessing) return;
+
+        showMessage("");
+        hideStatus();
+        hideResetButton();
+
+        const file = imageInput.files[0];
+
+        if (!file) {
+          clearPreview();
+          return;
+        }
+
+        if (!file.type.startsWith("image/")) {
+          showMessage("Please select a valid image file.", "error");
+          imageInput.value = "";
+          clearPreview();
+          return;
+        }
+
+        if (file.size > MAX_SIZE) {
+          showMessage(
+            "File size must be less than or equal to 10 MB.",
+            "error",
+          );
+          imageInput.value = "";
+          clearPreview();
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          renderPreview(e.target.result, "Selected Image");
+        };
+        reader.readAsDataURL(file);
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const file = imageInput.files[0];
+
+        if (!file) {
+          showMessage("Please choose an image first.", "error");
+          return;
+        }
+
+        if (!file.type.startsWith("image/")) {
+          showMessage("Please select a valid image file.", "error");
+          return;
+        }
+
+        if (file.size > MAX_SIZE) {
+          showMessage(
+            "File size must be less than or equal to 10 MB.",
+            "error",
+          );
+          return;
+        }
+
+        try {
+          stopPolling();
+          currentJobId = null;
+          isCheckingStatus = false;
+
+          setProcessingState(true);
+          showLoader();
+          hideResetButton();
+          showStatus("UPLOADING", "status-processing");
+          showMessage("Uploading image...", "info");
+
+          const formData = new FormData();
+          formData.append("image", file);
+
+          const response = await fetch("http://52.203.91.46:8000/api/image", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json().catch(() => null);
+
+          if (!response.ok) {
+            throw new Error(data?.message || "Upload failed.");
+          }
+
+          const jobId = data?.job_id;
+
+          if (!jobId) {
+            throw new Error("Job ID not returned from server.");
+          }
+
+          currentJobId = jobId;
+          localStorage.setItem(LOCAL_STORAGE_KEY, jobId);
+
+          showStatus("PROCESSING", "status-processing");
+          showMessage(
+            "Image uploaded successfully. Processing started...",
+            "info",
+          );
+          showLoader();
+
+          startPolling(jobId);
+        } catch (error) {
+          stopPolling();
+          currentJobId = null;
+          hideLoader();
+          setProcessingState(false);
+          showStatus("ERROR", "status-failed");
+          showMessage(error.message || "Something went wrong.", "error");
+          showResetButton();
+        }
+      });
+
+      resetBtn.addEventListener("click", resetAll);
+
+      window.addEventListener("load", () => {
+        const savedJobId = localStorage.getItem(LOCAL_STORAGE_KEY);
+
+        if (savedJobId) {
+          currentJobId = savedJobId;
+          setProcessingState(true);
+          showLoader();
+          showStatus("RESUMING", "status-processing");
+          showMessage("Resuming previous job...", "info");
+          startPolling(savedJobId);
+        } else {
+          hideStatusCard();
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.844.0",
+    "@aws-sdk/client-s3": "^3.844.0",
+    "@aws-sdk/client-sqs": "^3.844.0",
+    "@aws-sdk/lib-dynamodb": "^3.844.0",
+    "axios": "^1.8.4",
+    "form-data": "^4.0.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
